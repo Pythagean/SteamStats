@@ -3,9 +3,9 @@ function updateAllGamesFromCompareList(){
   var active_sheet = compareSheet(),
       last_row = active_sheet.getLastRow(),
       compare_sheet = active_sheet.getSheetByName("Compare"),
-      existing_games = compare_sheet.getRange(7, 1, last_row - 7, 2).getValues(),
+      existing_games = compare_sheet.getRange(7, 1, last_row - 7, 3).getValues(),
       games_inserted_count = 0,
-      games_to_get = 5;
+      games_to_get = 50;
 
   existing_games.forEach(function(game){
     if (games_inserted_count < games_to_get){
@@ -18,15 +18,17 @@ function updateAllGamesFromCompareList(){
 };
 
 function getGameDataFromGB(game){
-  var game_name = game[1],
-      game_steam_id = game[0];
+  var game_name = game[2],
+      game_steam_id = game[1],
+      in_allgames = game[0];
   //game_name = game_name == null ? 'Left 4 Dead 2' : game[1];
   var query = '"Apps Script" stars:">=100"',
       all_games_array = getDataFromAllGames();
 
-  var alreadyExists = hashArrayContainsValue('name', game_name, all_games_array, 'bool');
+  //Logger.log(in_allgames);
+  if (!in_allgames){
+    //var alreadyExists = hashArrayContainsValue('steam_id', game_steam_id, all_games_array, 'idx');
 
-  if (!alreadyExists){
     Logger.log('game ' + game_name + ' does not exist');
     var s_url = 'http://www.giantbomb.com/api/search/';
     s_url = s_url += encodeURIComponent('?api_key=695fc51cfe9223919cc00f148f4301a0f2caf9bf'
@@ -73,11 +75,12 @@ function getGameDataFromGB(game){
       result = {steam_id: game_steam_id, gb_id: gb_id, name: gb_name, release_date: gb_release_date, concepts: gb_concepts,
         developers: gb_developers, genres: gb_genres, similar_games: gb_similar_games, themes: gb_themes};
 
-      return writeToAllGames(result); // writeToAllGames returns true/false depending on if an entry was inserted into AllGames
+      return writeToAllGames(result, true); // writeToAllGames returns true/false depending on if an entry was inserted into AllGames
 
     } else {
       // No search results from Giant Bomb API
       Logger.log('skipping ' + game_name + ' - cannot find in Giantbomb wiki');
+      return writeToAllGames({steam_id: game_steam_id, gb_id: 0, name: game_name}, false)
       return false;
     }
 
@@ -132,31 +135,37 @@ function getIDsNamesFromGBArray(array){
 };
 
 // Writes a game record into All Games if it doesn't exist
-function writeToAllGames(game) {
+function writeToAllGames(game, gb_api) {
   var active_sheet = allGamesSheet(),
       all_games_array = getDataFromAllGames();
 
-  Logger.log(game);
+  //Logger.log(game);
+  var sheet = SpreadsheetApp.getActiveSheet(),
+      row = sheet.getLastRow() + 1;
+  if (gb_api){
 
-  var alreadyExists = hashArrayContainsValue('gb_id', game.id, all_games_array, 'bool');
+    var values_to_save = [game.steam_id, game.gb_id, game.name, game.release_date,
+          arrayToDashDelimited(game.concepts).join('|'),
+          arrayToDashDelimited(game.developers).join('|'),
+          arrayToDashDelimited(game.genres).join('|'),
+          arrayToDashDelimited(game.similar_games).join('|'),
+          arrayToDashDelimited(game.themes).join('|'), gb_api],
+        range = sheet.getRange(row,1,1,values_to_save.length);
 
-  if (!alreadyExists){
-    var sheet = SpreadsheetApp.getActiveSheet(),
-        row = sheet.getLastRow() + 1,
-        range = sheet.getRange(row,1,1,9);
 
-    Logger.log('writing ' + game.name + ' to AllGames');
-    range.setValues([[game.steam_id, game.gb_id, game.name, game.release_date,
-      arrayToDashDelimited(game.concepts).join('|'),
-      arrayToDashDelimited(game.developers).join('|'),
-      arrayToDashDelimited(game.genres).join('|'),
-      arrayToDashDelimited(game.similar_games).join('|'),
-      arrayToDashDelimited(game.themes).join('|')]]);
-    return true; // returns true if it put an entry into AllGames
   } else {
-    Logger.log('skipping ' + game + ' - already exists in AllGames');
-    return false;
+    var values_to_save = [game.steam_id, game.gb_id, game.name, '',
+          '',
+          '',
+          '',
+          '',
+          '', gb_api],
+        range = sheet.getRange(row,1,1,values_to_save.length);
   }
+  Logger.log('writing ' + game.name + ' to AllGames');
+
+  range.setValues([values_to_save]);
+  return true; // returns true if it put an entry into AllGames
 
 };
 

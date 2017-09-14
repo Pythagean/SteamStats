@@ -71,16 +71,19 @@ function comparePlayers(player_1, player_2){
     if (game.p2_favorite) { p2_favs.push(game.name); }
     var p1_fav = game.p1_favorite ? '* ' : '',
         p2_fav = game.p2_favorite ? '* ' : '';
+    game.total_playtime = game.p1_playtime + game.p2_playtime;
   });
 
   active_sheet.setActiveSheet(active_sheet.getSheetByName('Compare'));
   var sheet = SpreadsheetApp.getActiveSheet(),
       both_owned_counter = 0, both_played_counter = 0, both_played_hour_counter = 0,
-      both_owned_array = [], both_played_array = [], both_played_hour_array = [];
+      both_owned_array = [], both_played_array = [], both_played_hour_array = [],
+      top_array = [], top_limit = 20, top_counter = 0;
 
   // ******
   // Final loop over games array
   // ******
+  full_games_array = sortHashArrayByParam(full_games_array, 'total_playtime');
   for (var i = 0; i < full_games_array.length; i++){
     var game = full_games_array[i],
         both_owned = game.p1_owned && game.p2_owned ? true : false,
@@ -96,23 +99,43 @@ function comparePlayers(player_1, player_2){
 
     var app_id = game.app_id,
         name = game.name,
-        p1_percent_of_play = (game.p1_playtime / p1_hours) * 100,        p2_percent_of_play = (game.p2_playtime / p2_hours) * 100,
+        p1_playtime_percent = game.p1_playtime / game.total_playtime,        p2_playtime_percent = game.p2_playtime / game.total_playtime,
         p1_playtime = game.p1_playtime,        p2_playtime = game.p2_playtime,
         p1_played = game.p1_played ? 'true':'false',        p2_played = game.p2_played ? 'true':'false',
         p1_played_hour = game.p1_played_hour ? 'true':'false',        p2_played_hour = game.p2_played_hour ? 'true':'false',
         p1_favorite = game.p1_favorite ? 'true':'false',        p2_favorite = game.p2_favorite ? 'true':'false';
 
+
+    //result.forEach(function(rec){
+    //Both play fairly equally
+    var top = false;
+    if (top_counter < top_limit){
+      if (p1_playtime > 1200 && p2_playtime > 1200) {
+        top_array.push(game.name);
+        top = true;
+        top_counter++;
+      }
+      else if (p1_playtime_percent > 0.3 && p2_playtime_percent > 0.3){
+        top_array.push(game.name);
+        top = true;
+        top_counter++;
+      }
+    }
+
     if (game.p1_played) { p1_played_games++; }
     if (game.p2_played) { p2_played_games++; }
 
+    var compareSheet = active_sheet.getSheetByName("Compare");
     var games = [[app_id, name,
           game.p1_owned, game.p2_owned, both_owned,
           p1_played, p2_played, both_played,
           p1_favorite, p2_favorite,
-          game.p1_playtime, game.p2_playtime,
-          p1_percent_of_play, p2_percent_of_play]],
+          game.p1_playtime, game.p2_playtime, game.total_playtime,
+          p1_playtime_percent, p2_playtime_percent, top]],
         row = i + 7;
-    var range = sheet.getRange(row,2,1,14);
+    var existing_games = sheet.getRange(7,2,compareSheet.getLastRow()-7,games[0].length);
+    if (i == 0) { existing_games.clear(); }
+    var range = sheet.getRange(row,2,1,games[0].length);
     range.setValues(games);
 
 
@@ -128,6 +151,7 @@ function comparePlayers(player_1, player_2){
   var summary = [[p1_own_games], [p2_own_games],
         [p1_played_games], [p2_played_games],
         [both_owned_counter], [both_played_counter],
+        [top_array.join(', ')],
         [both_played_hour_array.join(', ')],
         [arrayToDashDelimited(p1_genres).join(', ')],
         [arrayToDashDelimited(p2_genres).join(', ')],
@@ -187,15 +211,17 @@ function playerLoop(player, games_arr, full_games_arr, all_games_arr, fav_num, h
       var record = all_games_arr[all_games_idx];
       if (record.release_date != null && record.release_date != ''){
         var release_year = record.release_date.getFullYear(),
-            record_idx = hashArrayContainsValue('year', release_year, release_years, 'idx');
+            record_idx = hashArrayContainsValue('name', release_year, release_years, 'idx');
         if (record_idx < 0){
           //Logger.log('adding new record for ' + release_year);
-          var new_record = {year: release_year, count: 1};
+          var new_record = {id: release_year, name: release_year, count: 1};
           new_record.playtime =  full_games_arr[game_idx][player+'_playtime'];
+          new_record.games = [full_games_arr[game_idx].name];
           release_years.push(new_record);
         } else {
           release_years[record_idx].count++;
           release_years[record_idx].playtime += full_games_arr[game_idx][player+'_playtime'];
+          release_years[record_idx].games.push(full_games_arr[game_idx].name);
         }
       }
     }
@@ -213,28 +239,21 @@ function playerLoop(player, games_arr, full_games_arr, all_games_arr, fav_num, h
 
 
 function allGamesArrayParser(player, full_games_arr, all_games_arr, all_games_idx, game_idx, array_name, records_arr){
-  //var records_arr = []
   all_games_arr[all_games_idx][array_name].forEach(function(record){
     /*hashArrayContainsValue(field, value, array_of_games, return_val)*/
     var record_idx = hashArrayContainsValue('id', record.id, records_arr, 'idx');
     if (record_idx < 0){
-      var new_record = {id: record.id, name: record.name};
-      new_record.count = 1;
-      //new_record[player+'_count'] = 1;
+      var new_record = {id: record.id, name: record.name, count: 1};
       new_record.playtime =  full_games_arr[game_idx][player+'_playtime'];
       new_record.games = [full_games_arr[game_idx].name];
-      //new_record[player+'_playtime'] =  full_games_arr[game_idx][player+'_playtime'];
       records_arr.push(new_record);
     } else {
       // record already exists, add 1 to counter and add playtime
       records_arr[record_idx].count++;
-      //records_arr[record_idx][player+'_count']++;
       records_arr[record_idx].playtime += full_games_arr[game_idx][player+'_playtime'];
       records_arr[record_idx].games.push(full_games_arr[game_idx].name);
-      //records_arr[record_idx][player+'_playtime'] += full_games_arr[game_idx][player+'_playtime'];
     }
   });
-  //Logger.log(records_arr);
   return records_arr;
 };
 
@@ -252,9 +271,11 @@ function excludeFromArray(array, type){
 
 function mergePlayerArrays(name, p1_array, p2_array){
   var result = [];
+  if (name == 'Years'){ Logger.log(p1_array); }
   p1_array.forEach(function(p1_rec){
     var new_rec = {id: p1_rec.id, name: p1_rec.name,
       p1_count: p1_rec.count, p1_playtime: p1_rec.playtime,
+      p2_count: 0, p2_playtime: 0,
       total_playtime:  p1_rec.playtime, games: p1_rec.games};
     result.push(new_rec);
   });
@@ -273,7 +294,8 @@ function mergePlayerArrays(name, p1_array, p2_array){
       result[p2_idx].p2_playtime_percent = p2_rec.playtime / result[p2_idx].total_playtime;
     } else {
       var new_rec = {id: p2_rec.id, name: p2_rec.name,
-        p2_count: p2_rec.count, p2_rec: p2_rec.playtime,
+        p1_count: 0, p1_playtime: 0,
+        p2_count: p2_rec.count, p2_playtime: p2_rec.playtime,
         total_playtime:  p2_rec.playtime, games: p2_rec.games};
       result.push(new_rec);
     }
@@ -299,15 +321,22 @@ function mergePlayerArrays(name, p1_array, p2_array){
     //Both play fairly equally
     var top = false;
     if (rec.p1_playtime_percent > 0.3 && rec.p2_playtime_percent > 0.3 && top_counter < top_limit){
-      top_array.push(record);
+      top_array.push(rec.name);
       top = true;
       top_counter++;
     }
+    var p1_count = rec.p1_count == null ? 0 : rec.p1_count;
+    var p2_count = rec.p2_count == null ? 0 : rec.p2_count;
+    var p1_playtime = rec.p1_playtime == null ? 0 : rec.p1_playtime;
+    var p2_playtime = rec.p2_playtime == null ? 0 : rec.p2_playtime;
+    var p1_playtime_percent = rec.p1_playtime_percent == null ? 0 : rec.p1_playtime_percent;
+    var p2_playtime_percent = rec.p2_playtime_percent == null ? 0 : rec.p2_playtime_percent;
+
     var games_text = rec.games == null ? '' : rec.games.join(', ');
     var record = [rec.id, rec.name,
-      rec.p1_count, rec.p2_count,
-      rec.p1_playtime, rec.p2_playtime,
-      rec.p1_playtime_percent, rec.p2_playtime_percent,
+      p1_count, p2_count,
+      p1_playtime, p2_playtime,
+      p1_playtime_percent, p2_playtime_percent,
       rec.total_playtime, top, games_text];
     data.push(record);
 
@@ -315,7 +344,7 @@ function mergePlayerArrays(name, p1_array, p2_array){
   });
 
   var range = sheet.getRange(2,1,data.length,data[0].length);
-  Logger.log(data);
+  //Logger.log(data);
   range.setValues(data);
 
   return result;

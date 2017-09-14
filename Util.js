@@ -66,6 +66,7 @@ function smartCopyPlayed(){
 
 function arrayToDashDelimited(array){
   var result = [];
+  array = array.slice(0,20);
   array.forEach(function(rec){
     if (rec.count == null){
       result.push(rec.id+'_'+rec.name);

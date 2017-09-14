@@ -5,7 +5,7 @@ function updateAllGamesFromCompareList(){
       compare_sheet = active_sheet.getSheetByName("Compare"),
       existing_games = compare_sheet.getRange(7, 1, last_row - 7, 3).getValues(),
       games_inserted_count = 0,
-      games_to_get = 50;
+      games_to_get = 40;
 
   existing_games.forEach(function(game){
     if (games_inserted_count < games_to_get){
@@ -20,13 +20,13 @@ function updateAllGamesFromCompareList(){
 function getGameDataFromGB(game){
   var game_name = game[2],
       game_steam_id = game[1],
-      in_allgames = game[0];
-  //game_name = game_name == null ? 'Left 4 Dead 2' : game[1];
-  var query = '"Apps Script" stars:">=100"',
-      all_games_array = getDataFromAllGames();
+      in_allgames = game[0],
+      query = '"Apps Script" stars:">=100"';
 
   //Logger.log(in_allgames);
   if (!in_allgames){
+
+    if (game_steam_id == '') { return false; }
     //var alreadyExists = hashArrayContainsValue('steam_id', game_steam_id, all_games_array, 'idx');
 
     Logger.log('game ' + game_name + ' does not exist');
@@ -154,6 +154,7 @@ function writeToAllGames(game, gb_api) {
 
 
   } else {
+    if (game.steam_id == '') { return true; }
     var values_to_save = [game.steam_id, game.gb_id, game.name, '',
           '',
           '',

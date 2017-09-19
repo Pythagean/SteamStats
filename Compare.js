@@ -60,9 +60,10 @@ function comparePlayers(player_1, player_2){
       all_developers = mergePlayerArrays('Developers', p1_developers, p2_developers),
       all_themes = mergePlayerArrays('Themes', p1_themes, p2_themes),
       all_release_years = mergePlayerArrays('Years', p1_release_years, p2_release_years),
-      all_concepts = mergePlayerArrays('Concepts', p1_concepts, p2_concepts);
+      //all_concepts = mergePlayerArrays('Concepts', p1_concepts, p2_concepts);
+      all_concepts = [];
 
-  //Logger.log(p1_release_years);
+  Logger.log('Finished all mergePlayerArrays');
   var p1_favs = [],
       p2_favs = [];
 
@@ -141,6 +142,7 @@ function comparePlayers(player_1, player_2){
 
 
   }
+  Logger.log('Finished all Final Loop');
 
   //******
   //compareSummarySheet
@@ -167,7 +169,7 @@ function comparePlayers(player_1, player_2){
   range.setValues(summary);
 
 
-
+  Logger.log('Finished Everything');
 
 
   /*p1_genres.forEach(function(p1_genre){
@@ -271,7 +273,6 @@ function excludeFromArray(array, type){
 
 function mergePlayerArrays(name, p1_array, p2_array){
   var result = [];
-  if (name == 'Years'){ Logger.log(p1_array); }
   p1_array.forEach(function(p1_rec){
     var new_rec = {id: p1_rec.id, name: p1_rec.name,
       p1_count: p1_rec.count, p1_playtime: p1_rec.playtime,

@@ -19,6 +19,13 @@ function settingsSheet(){
   return active_sheet;
 };
 
+//Returns active spreadsheet, with MyPlaytime set as active sheet
+function myPlaytimeSheet(){
+  var active_sheet = SpreadsheetApp.getActiveSpreadsheet();
+  active_sheet.setActiveSheet(active_sheet.getSheetByName('MyPlaytime'));
+  return active_sheet;
+};
+
 //Returns active spreadsheet, with Compare set as active sheet
 function compareSheet(){
   var active_sheet = SpreadsheetApp.getActiveSpreadsheet();

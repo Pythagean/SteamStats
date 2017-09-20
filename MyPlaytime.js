@@ -29,7 +29,11 @@ function importMyGames() {
             total_minutes += existing_rec.minutes;
           }
         });
-        myPlaytimeRecords.push([new Date(), game.name, (game.playtime_forever - total_minutes)]);
+        var playtime_for_record = game.playtime_forever - total_minutes;
+        if (playtime_for_record > 0){
+          myPlaytimeRecords.push([new Date(), game.name, playtime_for_record]);
+        }
+
       } else {
         // Inserting a new record because game doesn't exist
         myPlaytimeRecords.push([new Date(), game.name, game.playtime_forever]);
